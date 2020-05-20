@@ -1,14 +1,41 @@
 /* src/App.js */
 import React, { useEffect, useState } from "react";
 import { API, graphqlOperation } from "aws-amplify";
-import { createTodo, deleteTodo } from "./graphql/mutations";
+import { createTodo, deleteTodo, updateTodo } from "./graphql/mutations";
 import { listTodos } from "./graphql/queries";
+import { List, Container, ListItem, ListItemText, ListItemIcon, Card, TextField, Button, FormGroup, FormControl, Input, IconButton, Grid, Checkbox, AppBar, Typography, Toolbar, Paper } from "@material-ui/core"
+import DeleteIcon from '@material-ui/icons/Delete';
+import { makeStyles } from '@material-ui/core/styles';
+const useStyles = makeStyles((theme) => ({
+	root: {
+
+	},
+	form: {
+		// display: "flex",
+		// justifyContent: "space-between",
+	},
+	addBtn: {
+
+	},
+	content: {
+		// flexGrow: 1
+		// margin: theme.spacing(1),
+		width: '100%'
+	},
+	title: {
+		// margin: theme.spacing(1),
+	},
+	done: {
+		textDecoration: "line-through"
+	}
+}));
 
 const initialState = { name: "", description: "" };
 
 const App = () => {
 	const [formState, setFormState] = useState(initialState);
 	const [todos, setTodos] = useState([]);
+	const classes = useStyles();
 
 	useEffect(() => {
 		fetchTodos();
@@ -30,8 +57,8 @@ const App = () => {
 
 	const addTodo = async () => {
 		try {
-			if (!formState.name || !formState.description) return;
-			const todo = { ...formState };
+			if (!formState.name) return;
+			const todo = { ...formState, done: false };
 			setFormState(initialState);
 			await API.graphql(graphqlOperation(createTodo, { input: todo }));
 			fetchTodos();
@@ -41,7 +68,6 @@ const App = () => {
 	};
 
 	const removeTodo = (todo) => async () => {
-		console.log(todo)
 		try {
 			if (!todo) return;
 			// setTodos([...todos.splice(todos.indexOf(todo), 1)]);
@@ -52,69 +78,69 @@ const App = () => {
 		}
 	};
 
+	const toggleCompleteTodo = (todo) => async () => {
+		try {
+			if (!todo) return;
+			await API.graphql(graphqlOperation(updateTodo, { input: { id: todo.id, done: !todo.done } }));
+			fetchTodos();
+		} catch (err) {
+			console.log("error deleting todo:", err);
+		}
+	}
+
+
 	return (
-		<div style={styles.container}>
-			<h2>Amplify Todos</h2>
-			<input
-				onChange={(event) => setInput("name", event.target.value)}
-				style={styles.input}
-				value={formState.name}
-				placeholder="Name"
-			/>
-			<input
-				onChange={(event) => setInput("description", event.target.value)}
-				style={styles.input}
-				value={formState.description}
-				placeholder="Description"
-			/>
-			<button style={styles.button} onClick={addTodo}>
-				Create Todo
-      		</button>
-			{todos.map((todo, index) => (
-				<div key={todo.id ? todo.id : index} style={styles.todo}>
-					<p style={styles.todoName}>
-						{todo.name}
-						<span style={styles.delete} onClick={removeTodo(todo)}>
-							x
-            </span>
-					</p>
-					<p style={styles.todoDescription}>{todo.description}</p>
-				</div>
-			))}
-		</div>
+		<Container>
+			<Paper>
+				<AppBar position="static">
+					<Toolbar>
+						<Typography variant="h6" className={classes.title}>
+							My Todo
+					</Typography>
+					</Toolbar>
+				</AppBar>
+				<List>
+					<ListItem className={classes.form} >
+						<Grid container spacing={3}>
+							<Grid item xs={11}>
+								<TextField
+									className={classes.content}
+									onChange={(event) => setInput("name", event.target.value)}
+									value={formState.name}
+									// placeholder="Content"
+									multiline
+								// variant="outlined"
+								/>
+							</Grid>
+							<Grid item xs={1}>
+								<Button
+									color="primary"
+									className={classes.addBtn}
+									onClick={addTodo}
+									variant="contained"
+								>
+									Save</Button>
+							</Grid>
+
+						</Grid>
+					</ListItem>
+					{todos.map((todo, index) => (
+						<ListItem key={todo.id ? todo.id : index} onClick={toggleCompleteTodo(todo)} button >
+							<ListItemText className={todo.done ? classes.done : ""} >{todo.name}</ListItemText>
+							<IconButton
+								edge="end"
+								aria-label="comments"
+								onClick={removeTodo(todo)}
+							>
+								<DeleteIcon />
+							</IconButton>
+						</ListItem>
+					))}
+				</List>
+			</Paper>
+		</Container>
 	);
 };
 
-const styles = {
-	container: {
-		width: 400,
-		// margin: "0 auto",
-		display: "flex",
-		flex: 1,
-		flexDirection: "column",
-		justifyContent: "center",
-		padding: 20,
-	},
-	todo: { marginBottom: 15 },
-	input: {
-		border: "none",
-		backgroundColor: "#ddd",
-		marginBottom: 10,
-		padding: 8,
-		fontSize: 18,
-	},
-	todoName: { fontSize: 20, fontWeight: "bold" },
-	todoDescription: { marginBottom: 0 },
-	button: {
-		backgroundColor: "black",
-		color: "white",
-		outline: "none",
-		fontSize: 18,
-		padding: "12px 0px",
-	},
-	delete: {
-		float: "right",
-	},
-};
 
 export default App;
